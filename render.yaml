@@ -1,0 +1,12 @@
+# Render 一键部署配置（Blueprint）
+# 在 Render 控制台选择 New -> Blueprint 并选中本仓库即可自动创建服务
+services:
+  - type: web
+    name: campus-banner-system      # 服务名，决定访问地址 https://campus-banner-system.onrender.com
+    runtime: python                 # 原生 Python 运行时，无需 Docker
+    plan: free                      # 免费套餐
+    buildCommand: ""                # 零依赖项目，无需构建
+    startCommand: python server.py  # 启动命令
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
