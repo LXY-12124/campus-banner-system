@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>校园条幅报备系统（管理端后台）</title>
+<style>
+/* ========== 基础变量与全局 ========== */
+:root{
+  --primary:#2f54eb; --primary-l:#4d7bff;
+  --text:#1f2329; --muted:#7a8299; --line:#e9ecf4; --bg:#f0f2f7;
+  --pending:#fa8c16; --overdue:#f5222d; --done:#52c41a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit}
+
+/* ========== 整体布局 ========== */
+.layout{display:flex;min-height:100vh}
+.side{width:224px;flex:0 0 auto;background:linear-gradient(180deg,#101a3d 0%,#18265a 100%);color:#c6cdea;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.logo{padding:20px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.logo svg{width:30px;height:30px;color:var(--primary-l);flex:0 0 auto}
+.logo b{color:#fff;font-size:15px;display:block;line-height:1.3}
+.logo span{font-size:10px;color:#8ea0d6;display:block;margin-top:2px}
+.nav{padding:12px 0;flex:1}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;padding:13px 20px;border:none;background:transparent;
+  color:#aab8e0;font-size:14px;cursor:pointer;text-align:left;position:relative;transition:background .15s}
+.nav button:hover{background:rgba(77,123,255,.12)}
+.nav button.on{background:rgba(77,123,255,.22);color:#fff}
+.nav button.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--primary-l)}
+.nav svg{width:17px;height:17px;flex:0 0 auto}
+.nav .bdg{margin-left:auto;background:var(--overdue);color:#fff;font-size:10px;min-width:17px;height:17px;line-height:17px;
+  padding:0 5px;border-radius:999px;text-align:center}
+.nav .bdg.orange{background:var(--pending)}
+.side-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#7386bf}
+.side-foot button{width:100%;margin-bottom:10px;padding:8px 0;border:1px solid rgba(255,255,255,.2);border-radius:8px;
+  background:transparent;color:#aab8e0;font-size:12px;cursor:pointer}
+.side-foot button:hover{background:rgba(255,255,255,.08)}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;padding:0 24px;height:58px;display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.topbar h2{font-size:16px;font-weight:600}
+.top-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted)}
+.top-right .admin{display:flex;align-items:center;gap:7px;background:#f0f5ff;color:var(--primary);
+  padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500}
+.top-right .admin .dot{width:7px;height:7px;border-radius:50%;background:var(--done)}
+
+.tab{display:none;padding:20px 24px 34px;animation:fadeIn .2s ease}
+.tab.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* ========== 数据总览 ========== */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;background:var(--c,#2f54eb)}
+.stat .n{font-size:28px;font-weight:700;color:var(--c,#2f54eb);line-height:1.1}
+.stat .t{font-size:13px;color:var(--muted);margin-top:6px}
+.stat .s{font-size:11px;color:#b0b6c0;margin-top:3px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.chart-grid{display:grid;grid-template-columns:1.3fr 1fr 1.2fr;gap:14px}
+.panel h3{font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel h3::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--primary)}
+.days{display:flex;align-items:flex-end;gap:12px;height:150px;padding-top:10px}
+.dcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
+.dnum{font-size:11px;color:#6b7486;font-weight:600}
+.dbar{width:26px;background:linear-gradient(180deg,#5b7cfa,#3450d6);border-radius:6px 6px 2px 2px;min-height:4px;
+  transition:height .3s}
+.dlab{font-size:10px;color:#9aa1ad}
+.donut-wrap{display:flex;align-items:center;gap:20px}
+.donut{width:118px;height:118px;border-radius:50%;position:relative;flex:0 0 auto}
+.donut::after{content:"";position:absolute;inset:26px;background:#fff;border-radius:50%}
+.donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
+.donut .c b{font-size:22px}
+.donut .c span{font-size:10px;color:var(--muted)}
+.legend{flex:1}
+.lrow{display:flex;align-items:center;gap:8px;font-size:12px;color:#4b5568;padding:4px 0}
+.lrow i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.lrow b{margin-left:auto;font-weight:600}
+.tip{margin-top:14px;background:#f6f9ff;border:1px dashed #c3d4ff;color:#3a5bd9;border-radius:10px;
+  padding:10px 14px;font-size:12px;line-height:1.7}
+
+/* ========== 通用工具栏 / 筛选 chips ========== */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px;color:#5a6478;cursor:pointer}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.search{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 10px;height:34px;margin-left:auto}
+.search svg{width:14px;height:14px;color:#9aa1ad;flex:0 0 auto}
+.search input{border:none;outline:none;font-size:13px;width:210px;background:transparent}
+.btn{display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;border-radius:8px;font-size:13px;
+  padding:0 14px;height:34px;transition:opacity .15s}
+.btn:active{opacity:.85}
+.btn-pri{background:var(--primary);color:#fff}
+.btn-pri:hover{background:#2447d6}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:#4b5568}
+.btn-warn{background:#fff;border:1px solid #ffa39e;color:#cf1322}
+.count-line{font-size:12px;color:var(--muted);margin-bottom:8px}
+
+/* ========== 表格 ========== */
+.table-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th{background:#f7f9fd;font-size:12px;color:#5a6478;font-weight:600;text-align:left;padding:11px 12px;white-space:nowrap;
+  border-bottom:1px solid var(--line)}
+td{font-size:13px;padding:11px 12px;border-bottom:1px solid #f1f3f8;vertical-align:middle}
+tbody tr:hover{background:#f8faff}
+tbody tr:last-child td{border-bottom:none}
+td.mono{font-family:Consolas,monospace;font-size:12px;color:#4b5568}
+td.center{text-align:center}
+td .muted{color:var(--muted);font-size:11px}
+td.content{max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.time{white-space:nowrap;font-size:12px;color:#4b5568}
+.ops{white-space:nowrap}
+.ob{border:1px solid var(--line);background:#fff;color:#4b5568;font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;margin:2px 6px 2px 0}
+.ob:hover{border-color:var(--primary);color:var(--primary)}
+.ob.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+.ob.pri:hover{background:#2447d6}
+.ob.warn{border-color:#ffa39e;color:#cf1322;background:#fff}
+.ob.warn:hover{background:#fff1f0}
+.remind-tag{font-size:10px;color:#fa8c16;margin-top:3px}
+.empty{padding:50px 0;text-align:center;color:var(--muted);font-size:13px}
+.overdue-days{display:inline-block;background:#fff1f0;color:#cf1322;font-weight:700;font-size:12px;
+  padding:2px 9px;border-radius:999px}
+.alert{background:linear-gradient(90deg,#fff1f0,#fff7f7);border:1px solid #ffccc7;color:#a8071a;
+  padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13px;line-height:1.7}
+.alert b{font-size:16px}
+
+/* ========== 状态标签 ========== */
+.pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.st-pending{color:#d46b08;background:#fff7e6}
+.st-active{color:#2f54eb;background:#f0f5ff}
+.st-overdue{color:#cf1322;background:#fff1f0}
+.st-done{color:#389e0d;background:#f6ffed}
+.st-rejected{color:#6b7280;background:#f3f4f6}
+
+/* ========== 弹窗 ========== */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:14px;width:min(560px,94%);max-height:88vh;overflow:auto;padding:20px 22px;
+  animation:pop .18s ease}
+@keyframes pop{from{transform:scale(.96);opacity:.5}to{transform:none;opacity:1}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.modal-head h3{font-size:16px}
+.x{background:#f3f4f6;border:none;width:28px;height:28px;border-radius:50%;font-size:15px;color:#6b7280;cursor:pointer;line-height:1}
+.dl{display:grid;grid-template-columns:96px 1fr;gap:9px 12px;font-size:13px;align-items:start}
+.dl dt{color:var(--muted)}
+.dl dd{color:var(--text);line-height:1.55;word-break:break-all}
+.modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
+.modal textarea{width:100%;border:1px solid #dfe3ea;border-radius:9px;padding:10px 12px;font-size:13px;
+  font-family:inherit;resize:vertical;outline:none;min-height:84px}
+.modal textarea:focus{border-color:var(--primary)}
+.copy-box{background:#f7f8fa;border:1px dashed #d8dce6;border-radius:9px;padding:11px 13px;font-size:12px;
+  color:#4b5568;line-height:1.8;margin-top:6px}
+
+/* ========== Toast ========== */
+.toast{position:fixed;top:22px;left:50%;transform:translateX(-50%);background:rgba(23,26,35,.9);color:#fff;
+  padding:10px 20px;border-radius:10px;font-size:13px;z-index:120;animation:fadeIn .18s ease}
+.hidden{display:none!important}
+
+/* ========== 响应式 ========== */
+@media (max-width:1100px){.chart-grid{grid-template-columns:1fr}}
+@media (max-width:900px){
+  .side{width:64px}
+  .side .txt,.side .logo b,.side .logo span,.side-foot{display:none}
+  .nav button{justify-content:center;padding:14px 0}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ================= 侧边栏 ================= -->
+  <aside class="side">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg>
+      <div><b>条幅监管平台</b><span>党委宣传部专用</span></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-tab="overview" class="on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="txt">数据总览看板</span>
+      </button>
+      <button data-tab="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+        <span class="txt">报备订单管理</span>
+        <span class="bdg orange" id="bdgPending">0</span>
+      </button>
+      <button data-tab="overdue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><path d="M12 17.2h.01"/></svg>
+        <span class="txt">到期违规管理</span>
+        <span class="bdg" id="bdgOverdue">0</span>
+      </button>
+      <button data-tab="archive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>
+        <span class="txt">数据归档</span>
+      </button>
+    </nav>
+    <div class="side-foot">
+      <button id="resetBtn" type="button">重置演示数据</button>
+      <div>原型演示版 v1.0<br>数据仅存于本浏览器</div>
+    </div>
+  </aside>
+
+  <!-- ================= 主内容区 ================= -->
+  <main class="main">
+    <header class="topbar">
+      <h2 id="pageTitle">数据总览看板</h2>
+      <div class="top-right">
+        <span id="todayStr"></span>
+        <span class="admin"><span class="dot"></span><span id="adminName">宣传部管理员</span></span>
+        <button id="logoutBtn" class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:12px" type="button">退出登录</button>
+      </div>
+    </header>
+
+    <!-- ===== 模块1：数据总览看板 ===== -->
+    <section id="tab-overview" class="tab active">
+      <div class="stat-grid">
+        <div class="stat" style="--c:#2f54eb"><div class="n" id="stToday">0</div><div class="t">今日新增报备</div><div class="s" id="stTodaySub"></div></div>
+        <div class="stat" style="--c:#13c2c2"><div class="n" id="stActive">0</div><div class="t">当前在挂条幅</div><div class="s">悬挂中 · 未到期</div></div>
+        <div class="stat" style="--c:#f5222d"><div class="n" id="stOverdue">0</div><div class="t">到期未撤条幅</div><div class="s">需尽快通知整改</div></div>
+        <div class="stat" style="--c:#722ed1"><div class="n" id="stMonth">0</div><div class="t">本月累计报备</div><div class="s" id="stMonthSub"></div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="panel">
+          <h3>近 7 日新增报备趋势</h3>
+          <div class="days" id="chart7"></div>
+        </div>
+        <div class="panel">
+          <h3>报备状态分布</h3>
+          <div class="donut-wrap">
+            <div class="donut" id="donut"><div class="c"><b id="donutTotal">0</b><span>总报备</span></div></div>
+            <div class="legend" id="donutLegend"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>各部门在挂条幅分布（TOP6）</h3>
+          <div id="deptBars"></div>
+        </div>
+      </div>
+      <div class="tip">演示提示：本后台与「用户端 H5」共用同一份本地数据——在 H5 提交报备后此处实时出现；在此审核通过/驳回后 H5 端状态同步更新。点击左侧菜单体验全流程。</div>
+    </section>
+
+    <!-- ===== 模块2：报备订单管理 ===== -->
+    <section id="tab-orders" class="tab">
+      <div class="toolbar">
+        <div class="chips" id="orderChips">
+          <button class="chip on" data-st="all">全部</button>
+          <button class="chip" data-st="pending">待审核</button>
+          <button class="chip" data-st="active">悬挂中</button>
+          <button class="chip" data-st="overdue">已到期</button>
+          <button class="chip" data-st="done">已撤销</button>
+          <button class="chip" data-st="rejected">已驳回</button>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="orderKw" type="text" placeholder="搜索部门 / 条幅内容 / 位置 / 单号">
+        </div>
+        <button class="btn btn-pri" id="exportOrders" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+          导出Excel
+        </button>
+      </div>
+      <div class="count-line" id="orderCount"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>报备单号</th><th>所属部门</th><th>条幅内容</th><th>条数</th><th>悬挂位置</th>
+            <th>悬挂期间</th><th>联系人</th><th>状态</th><th>操作</th>
+          </tr></thead>
+          <tbody id="orderBody"></tbody>
+        </table>
+        <div id="orderEmpty" class="empty hidden">无符合条件的报备记录</div>
+      </div>
+    </section>
+
+    <!-- ===== 模块3：到期违规管理 ===== -->
+    <section id="tab-overdue" class="tab">
+      <div class="alert" id="overdueAlert"></div>
+      <div class="toolbar">
+        <div class="count-line" style="margin:0" id="overdueCount"></div>
+        <button class="btn btn-pri" id="exportOverdue" type="button" style="margin-left:auto">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+          导出超期清单
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>报备单号</th><th>所属部门</th><th>条幅内容</th><th>悬挂位置</th><th>截止时间</th>
+            <th>超期时长</th><th>负责人</th><th>联系电话</th><th>操作</th>
+          </tr></thead>
+          <tbody id="overdueBody"></tbody>
+        </table>
+        <div id="overdueEmpty" class="empty hidden">当前无到期未撤条幅，校园环境保持良好</div>
+      </div>
+    </section>
+
+    <!-- ===== 模块4：数据归档 ===== -->
+    <section id="tab-archive" class="tab">
+      <div class="toolbar">
+        <select id="archiveMonth" class="btn btn-ghost" style="height:34px">
+          <option value="">全部月份</option>
+        </select>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="archiveKw" type="text" placeholder="搜索部门 / 内容 / 位置 / 单号">
+        </div>
+        <button class="btn btn-pri" id="exportArchive" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+          导出Excel
+        </button>
+      </div>
+      <div class="count-line" id="archiveCount"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>报备单号</th><th>所属部门</th><th>条幅内容</th><th>悬挂位置</th><th>悬挂期间</th>
+            <th>条数</th><th>撤下时间</th><th>撤下备注</th>
+          </tr></thead>
+          <tbody id="archiveBody"></tbody>
+        </table>
+        <div id="archiveEmpty" class="empty hidden">暂无归档记录</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 详情弹窗 -->
+<div id="detailMask" class="mask hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>报备详情</h3><button class="x" data-close="detailMask" type="button">×</button></div>
+    <dl class="dl" id="detailDl"></dl>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close="detailMask" type="button">关闭</button></div>
+  </div>
+</div>
+
+<!-- 驳回弹窗 -->
+<div id="rejectMask" class="mask hidden">
+  <div class="modal" style="width:min(460px,94%)">
+    <div class="modal-head"><h3>驳回报备</h3><button class="x" data-close="rejectMask" type="button">×</button></div>
+    <p style="font-size:13px;color:#7a8299;margin-bottom:10px">驳回后用户端将展示驳回原因，部门可修改后重新报备。</p>
+    <textarea id="rejectReason" placeholder="请填写驳回原因，如：条幅内容需修改后再报备"></textarea>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close="rejectMask" type="button">取消</button>
+      <button class="btn btn-warn" id="rejectConfirm" type="button">确认驳回</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* =====================================================================
+ * 数据层：所有报备数据存于服务器 SQLite（banner.db），通过 REST API 读写。
+ * 所有注册用户发布的报备实时汇总到本后台；页面每 5 秒轮询自动刷新。
+ * ===================================================================== */
+var SESSION_KEY = 'banner_session_v1';
+
+/* ===== 登录守卫：未登录或非管理员则跳转登录页 ===== */
+var SESSION = null;
+try{ SESSION = JSON.parse(localStorage.getItem(SESSION_KEY)); }catch(e){}
+if(!SESSION || SESSION.role!=='admin'){ location.replace('login.html'); }
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function iso(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function today(){ return iso(new Date()); }
+function dOff(n){ var d=new Date(); d.setDate(d.getDate()+n); return iso(d); }
+function dtOff(n,h,m){ var d=new Date(); d.setDate(d.getDate()+n); return iso(d)+' '+pad(h)+':'+pad(m); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+var STATUS_META = {
+  pending:{label:'待审核',cls:'st-pending'},
+  active:{label:'悬挂中',cls:'st-active'},
+  overdue:{label:'已到期·待撤',cls:'st-overdue'},
+  done:{label:'已完成·已归档',cls:'st-done'},
+  rejected:{label:'已驳回',cls:'st-rejected'}
+};
+function effStatus(r){
+  if(r.status==='pending'||r.status==='rejected'||r.status==='done') return r.status;
+  return r.end < today() ? 'overdue' : 'active';
+}
+function overdueDays(r){ /* 超期天数（自然日） */
+  var e=new Date(r.end+'T00:00:00'), t=new Date(today()+'T00:00:00');
+  return Math.max(1,Math.round((t-e)/86400000));
+}
+
+/* ===== 数据读写：服务器 API ===== */
+var CACHE=[];        /* 记录缓存：由 refresh() 从服务器拉取 */
+var lastJson='';     /* 数据指纹：未变化则跳过重绘，避免打断管理员操作 */
+function loadRecords(){ return CACHE; }
+/* 从服务器拉取最新记录并按需重绘 */
+function refresh(){
+  return fetch('/api/records').then(function(r){ return r.json(); }).then(function(d){
+    var j=JSON.stringify(d.records||[]);
+    if(j!==lastJson){ lastJson=j; CACHE=d.records||[]; render(); }
+  }).catch(function(){ /* 网络异常时保留当前缓存 */ });
+}
+/* 统一 POST JSON 请求封装 */
+function apiPost(url,data){
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(function(r){ return r.json(); });
+}
+/* 单条记录操作（通过/驳回/提醒/撤销/撤下），成功后刷新数据 */
+function doAction(id,data,ok){
+  apiPost('/api/records/'+id+'/action',data).then(function(d){
+    if(!d.ok) return toast(d.msg||'操作失败，请重试');
+    refresh(); if(ok) ok();
+  }).catch(function(){ toast('网络异常，请稍后重试'); });
+}
+
+/* =====================================================================
+ * 后台页面逻辑
+ * ===================================================================== */
+var state = { tab:'overview', st:'all', kw:'', month:'', toastTimer:null, rejectId:null };
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.remove('hidden');
+  clearTimeout(state.toastTimer);
+  state.toastTimer=setTimeout(function(){ t.classList.add('hidden'); },2200);
+}
+function byCreatedDesc(a,b){ return a.createdAt<b.createdAt?1:-1; }
+
+/* ---------- 模块1：数据总览看板 ---------- */
+function renderOverview(){
+  var rs=loadRecords(), t=today(), month=t.slice(0,7);
+  var nToday=rs.filter(function(r){return r.createdAt.slice(0,10)===t;}).length;
+  var nActive=rs.filter(function(r){return effStatus(r)==='active';}).length;
+  var nOver=rs.filter(function(r){return effStatus(r)==='overdue';}).length;
+  var nMonth=rs.filter(function(r){return r.createdAt.slice(0,7)===month;}).length;
+  document.getElementById('stToday').textContent=nToday;
+  document.getElementById('stTodaySub').textContent='截至 '+new Date().toTimeString().slice(0,5);
+  document.getElementById('stActive').textContent=nActive;
+  document.getElementById('stOverdue').textContent=nOver;
+  document.getElementById('stMonth').textContent=nMonth;
+  document.getElementById('stMonthSub').textContent=month.replace('-','年')+' 月累计';
+
+  /* 近7日趋势 */
+  var days=[],max=1;
+  for(var i=-6;i<=0;i++){
+    var ds=dOff(i), c=rs.filter(function(r){return r.createdAt.slice(0,10)===ds;}).length;
+    max=Math.max(max,c); days.push({ds:ds,c:c,lab:ds.slice(5).replace('-','/')});
+  }
+  document.getElementById('chart7').innerHTML=days.map(function(d){
+    var h=Math.max(4,Math.round(d.c/max*100));
+    return '<div class="dcol"><span class="dnum">'+d.c+'</span><div class="dbar" style="height:'+h+'%"></div><span class="dlab">'+d.lab+'</span></div>';
+  }).join('');
+
+  /* 状态分布环形图 */
+  var order=['active','overdue','pending','done','rejected'];
+  var colors={active:'#2f54eb',overdue:'#f5222d',pending:'#fa8c16',done:'#52c41a',rejected:'#98a1b3'};
+  var total=rs.length, acc=0, stops=[];
+  order.forEach(function(k){
+    var c=rs.filter(function(r){return effStatus(r)===k;}).length;
+    var from=total?acc/total*360:0; acc+=c;
+    var to=total?acc/total*360:0;
+    stops.push(colors[k]+' '+from+'deg '+to+'deg');
+  });
+  var donut=document.getElementById('donut');
+  donut.style.background = total ? 'conic-gradient('+stops.join(',')+')' : '#eef1f8';
+  document.getElementById('donutTotal').textContent=total;
+  document.getElementById('donutLegend').innerHTML=order.map(function(k){
+    var c=rs.filter(function(r){return effStatus(r)===k;}).length;
+    return '<div class="lrow"><i style="background:'+colors[k]+'"></i>'+STATUS_META[k].label+'<b>'+c+'</b></div>';
+  }).join('');
+
+  /* 部门在挂分布 TOP6 */
+  var map={};
+  rs.filter(function(r){return effStatus(r)==='active';}).forEach(function(r){ map[r.dept]=(map[r.dept]||0)+r.count; });
+  var arr=Object.keys(map).map(function(k){return {dept:k,c:map[k]};}).sort(function(a,b){return b.c-a.c;}).slice(0,6);
+  var dm=arr.length?arr[0].c:1;
+  document.getElementById('deptBars').innerHTML = arr.length
+    ? arr.map(function(x){
+        return '<div style="display:flex;align-items:center;gap:9px;margin:9px 0;font-size:12px">'
+          +'<span style="width:92px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#4b5568">'+esc(x.dept)+'</span>'
+          +'<span style="flex:1;height:10px;background:#eef1f8;border-radius:999px;overflow:hidden"><span style="display:block;height:100%;width:'+Math.round(x.c/dm*100)+'%;border-radius:999px;background:linear-gradient(90deg,#4064f0,#7d9bff)"></span></span>'
+          +'<b style="width:22px;text-align:right;color:#2f54eb">'+x.c+'</b></div>';
+      }).join('')
+    : '<div class="empty">暂无在挂条幅</div>';
+}
+
+/* ---------- 模块2：报备订单管理 ---------- */
+function matchKw(r,kw){
+  return (r.dept+r.content+r.location+r.owner+r.id).indexOf(kw)>=0;
+}
+function renderOrders(){
+  /* 筛选 chip 计数与选中态 */
+  var rs=loadRecords(); rs.sort(byCreatedDesc);
+  var chips=document.querySelectorAll('#orderChips .chip');
+  var cnts={all:rs.length};
+  ['pending','active','overdue','done','rejected'].forEach(function(k){ cnts[k]=rs.filter(function(r){return effStatus(r)===k;}).length; });
+  chips.forEach(function(c){
+    c.classList.toggle('on',c.dataset.st===state.st);
+    c.textContent=c.dataset.st==='all' ? ('全部 '+cnts.all)
+      : (STATUS_META[c.dataset.st].label.split('·')[0]+' '+cnts[c.dataset.st]);
+  });
+  var kw=state.kw.trim();
+  var list=rs.filter(function(r){ return (state.st==='all'||effStatus(r)===state.st)&&(!kw||matchKw(r,kw)); });
+  document.getElementById('orderCount').textContent='共 '+list.length+' 条记录'+(kw?'（关键词：'+kw+'）':'');
+  document.getElementById('orderBody').innerHTML=list.map(rowHTML).join('');
+  document.getElementById('orderEmpty').classList.toggle('hidden',list.length>0);
+}
+function rowHTML(r){
+  var st=effStatus(r), m=STATUS_META[st], ops='';
+  if(st==='pending') ops='<button class="ob pri" data-act="approve" data-id="'+r.id+'" type="button">通过</button>'
+    +'<button class="ob warn" data-act="reject" data-id="'+r.id+'" type="button">驳回</button>';
+  else if(st==='overdue') ops='<button class="ob '+(r.reminded?'':'warn')+'" data-act="remind" data-id="'+r.id+'" type="button">'+(r.reminded?'再次提醒':'提醒撤下')+'</button>'
+    +'<button class="ob" data-act="detail" data-id="'+r.id+'" type="button">详情</button>';
+  else ops='<button class="ob" data-act="detail" data-id="'+r.id+'" type="button">详情</button>';
+  return '<tr>'
+    +'<td class="mono">'+esc(r.id)+'</td>'
+    +'<td>'+esc(r.dept)+'</td>'
+    +'<td class="content" title="'+esc(r.content)+'">'+esc(r.content)+'</td>'
+    +'<td class="center">'+esc(r.count)+'</td>'
+    +'<td>'+esc(r.location)+'</td>'
+    +'<td class="time">'+esc(r.start)+'<br>~ '+esc(r.end)+'</td>'
+    +'<td>'+esc(r.owner)+'<br><span class="muted">'+esc(r.phone)+'</span></td>'
+    +'<td><span class="pill '+m.cls+'">'+m.label+'</span>'+(r.reminded&&st==='overdue'?'<div class="remind-tag">已提醒</div>':'')+'</td>'
+    +'<td class="ops">'+ops+'</td></tr>';
+}
+
+/* ---------- 模块3：到期违规管理 ---------- */
+function renderOverdue(){
+  var rs=loadRecords().filter(function(r){return effStatus(r)==='overdue';})
+    .sort(function(a,b){return overdueDays(b)-overdueDays(a);});
+  var maxD=rs.length?overdueDays(rs[0]):0;
+  var el=document.getElementById('overdueAlert');
+  el.innerHTML = rs.length
+    ? '当前共 <b>'+rs.length+'</b> 条条幅到期未撤，最长超期 <b>'+maxD+'</b> 天。建议按超期时长逐一通知部门负责人整改，并跟踪撤下报备完成情况。'
+    : '当前无到期未撤条幅，各点位管理情况良好。';
+  document.getElementById('overdueCount').textContent='共 '+rs.length+' 条超期记录';
+  document.getElementById('overdueBody').innerHTML=rs.map(function(r){
+    return '<tr>'
+      +'<td class="mono">'+esc(r.id)+'</td>'
+      +'<td>'+esc(r.dept)+'</td>'
+      +'<td class="content" title="'+esc(r.content)+'">'+esc(r.content)+'</td>'
+      +'<td>'+esc(r.location)+'</td>'
+      +'<td class="time">'+esc(r.end)+'</td>'
+      +'<td><span class="overdue-days">超期 '+overdueDays(r)+' 天</span></td>'
+      +'<td>'+esc(r.owner)+'</td>'
+      +'<td class="mono">'+esc(r.phone)+'</td>'
+      +'<td class="ops"><button class="ob '+(r.reminded?'':'warn')+'" data-act="remind" data-id="'+r.id+'" type="button">'+(r.reminded?'再次提醒':'提醒撤下')+'</button>'
+      +'<button class="ob" data-act="copynote" data-id="'+r.id+'" type="button">复制通知文案</button></td></tr>';
+  }).join('');
+  document.getElementById('overdueEmpty').classList.toggle('hidden',rs.length>0);
+}
+function notifyText(r){
+  return '【条幅撤下提醒】'+r.dept+'：贵部门悬挂于「'+r.location+'」的条幅（'+r.content+'）已于 '
+    +r.end+' 到期，目前已超期 '+overdueDays(r)+' 天。请于今日内完成撤下，并在条幅报备系统提交撤下记录完成闭环。'
+    +'如已撤下请忽略本提醒。——党委宣传部';
+}
+
+/* ---------- 模块4：数据归档 ---------- */
+function doneList(){
+  var kw=state.kw.trim();
+  return loadRecords().filter(function(r){return effStatus(r)==='done';})
+    .filter(function(r){ return !state.month||r.removedAt===undefined||(r.removedAt||'').slice(0,7)===state.month; })
+    .filter(function(r){ return !kw||matchKw(r,kw); })
+    .sort(function(a,b){ return (a.removedAt<b.removedAt)?1:-1; });
+}
+function renderArchive(){
+  /* 月份下拉（保留当前选择） */
+  var months={}, sel=state.month;
+  loadRecords().filter(function(r){return effStatus(r)==='done';}).forEach(function(r){
+    var m=(r.removedAt||'').slice(0,7); if(m) months[m]=1;
+  });
+  var opts='<option value="">全部月份</option>'+Object.keys(months).sort().reverse().map(function(m){
+    return '<option value="'+m+'"'+(m===sel?' selected':'')+'>'+m.replace('-','年')+'月</option>';
+  }).join('');
+  var ms=document.getElementById('archiveMonth');
+  if(ms.innerHTML!==opts) ms.innerHTML=opts;
+  var list=doneList();
+  document.getElementById('archiveCount').textContent='已归档 '+list.length+' 条记录（永久留存，可随时追溯）';
+  document.getElementById('archiveBody').innerHTML=list.map(function(r){
+    return '<tr>'
+      +'<td class="mono">'+esc(r.id)+'</td>'
+      +'<td>'+esc(r.dept)+'</td>'
+      +'<td class="content" title="'+esc(r.content)+'">'+esc(r.content)+'</td>'
+      +'<td>'+esc(r.location)+'</td>'
+      +'<td class="time">'+esc(r.start)+' ~ '+esc(r.end)+'</td>'
+      +'<td class="center">'+esc(r.count)+'</td>'
+      +'<td class="time">'+esc(r.removedAt)+'</td>'
+      +'<td class="muted" style="color:#7a8299;font-size:12px">'+esc(r.removedNote||'—')+'</td></tr>';
+  }).join('');
+  document.getElementById('archiveEmpty').classList.toggle('hidden',list.length>0);
+}
+
+/* ---------- 导航与总渲染 ---------- */
+var TITLES={overview:'数据总览看板',orders:'报备订单管理',overdue:'到期违规管理',archive:'数据归档'};
+function renderNav(){
+  var rs=loadRecords();
+  document.getElementById('bdgPending').textContent=rs.filter(function(r){return effStatus(r)==='pending';}).length;
+  document.getElementById('bdgOverdue').textContent=rs.filter(function(r){return effStatus(r)==='overdue';}).length;
+  document.querySelectorAll('#nav button').forEach(function(b){ b.classList.toggle('on',b.dataset.tab===state.tab); });
+  document.querySelectorAll('.tab').forEach(function(s){ s.classList.toggle('active',s.id==='tab-'+state.tab); });
+  document.getElementById('pageTitle').textContent=TITLES[state.tab];
+}
+function render(){
+  renderNav();
+  if(state.tab==='overview') renderOverview();
+  else if(state.tab==='orders') renderOrders();
+  else if(state.tab==='overdue') renderOverdue();
+  else renderArchive();
+}
+function switchTab(t){ state.tab=t; render(); window.scrollTo(0,0); }
+
+/* ---------- 详情弹窗 ---------- */
+function openDetail(id){
+  var r=loadRecords().find(function(x){return x.id===id;}); if(!r) return;
+  var st=effStatus(r), m=STATUS_META[st];
+  var rows=[
+    ['报备单号',r.id],['当前状态','<span class="pill '+m.cls+'">'+m.label+'</span>'],
+    ['所属部门',r.dept],['负责人',r.owner+'（'+r.phone+'）'],
+    ['条幅条数',r.count+' 条'],['悬挂位置',r.location],
+    ['条幅内容',r.content],['悬挂期间',r.start+' ~ '+r.end],
+    ['报备时间',r.createdAt]
+  ];
+  if(r.removedAt) rows.push(['实际撤下',r.removedAt+' · 实撤 '+(r.removedCount||'-')+' 条']);
+  if(r.removedNote) rows.push(['撤下备注',r.removedNote]);
+  if(r.status==='rejected') rows.push(['驳回原因',r.reviewNote||'—']);
+  if(r.reminded&&st==='overdue') rows.push(['催办记录','已向部门负责人发送到期提醒']);
+  document.getElementById('detailDl').innerHTML=rows.map(function(x){
+    return '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>';
+  }).join('');
+  document.getElementById('detailMask').classList.remove('hidden');
+}
+
+/* ---------- 驳回弹窗 ---------- */
+function openReject(id){
+  state.rejectId=id;
+  document.getElementById('rejectReason').value='';
+  document.getElementById('rejectMask').classList.remove('hidden');
+}
+function confirmReject(){
+  var reason=document.getElementById('rejectReason').value.trim();
+  if(!reason) return toast('请填写驳回原因');
+  /* 服务器驳回并记录原因，用户端轮询后可见 */
+  doAction(state.rejectId,{action:'reject',reviewNote:reason},function(){
+    toast('已驳回，用户端将展示驳回原因');
+  });
+  document.getElementById('rejectMask').classList.add('hidden');
+}
+
+/* ---------- Excel 导出（.xls，带 BOM 防中文乱码） ---------- */
+function exportXls(filename,headers,rows){
+  var html='<table border="1"><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>'
+    +rows.map(function(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }).join('')
+    +'</table>';
+  var blob=new Blob(['\ufeff<html><head><meta charset="UTF-8"></head><body>'+html+'</body></html>'],
+    {type:'application/vnd.ms-excel'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
+}
+var ST_LABEL={pending:'待审核',active:'悬挂中',overdue:'已到期·待撤',done:'已完成·已归档',rejected:'已驳回'};
+function recordRows(list){
+  return list.map(function(r){
+    return [r.id,r.dept,r.owner,r.phone,r.count,r.content,r.location,r.start,r.end,
+      ST_LABEL[effStatus(r)],r.createdAt,r.removedAt||'',r.removedCount||'',r.removedNote||''];
+  });
+}
+var EXP_HEAD=['报备单号','所属部门','负责人','联系电话','条幅条数','条幅内容','悬挂位置','开始时间','截止时间','当前状态','报备时间','撤下时间','撤下条数','备注'];
+
+/* ---------- 事件绑定 ---------- */
+document.getElementById('nav').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-tab]'); if(b) switchTab(b.dataset.tab);
+});
+document.getElementById('orderChips').addEventListener('click',function(e){
+  var c=e.target.closest('.chip'); if(!c) return;
+  state.st=c.dataset.st; renderOrders();
+});
+document.getElementById('orderKw').addEventListener('input',function(e){ state.kw=e.target.value; renderOrders(); });
+document.getElementById('archiveKw').addEventListener('input',function(e){ state.kw=e.target.value; renderArchive(); });
+document.getElementById('archiveMonth').addEventListener('change',function(e){ state.month=e.target.value; renderArchive(); });
+
+/* 表格操作（事件委托：审核/提醒/详情/复制文案） */
+document.getElementById('orderBody').addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]'); if(!b) return;
+  var id=b.dataset.id, act=b.dataset.act, r=loadRecords().find(function(x){return x.id===id;});
+  if(!r) return;
+  if(act==='approve'){ doAction(id,{action:'approve'},function(){ toast(r.id+' 已审核通过，生效悬挂'); }); }
+  else if(act==='reject'){ openReject(id); }
+  else if(act==='remind'){ doAction(id,{action:'remind'},function(){
+    toast('已向 '+r.dept+' '+r.owner+'（'+r.phone+'）发送到期提醒'); }); }
+  else if(act==='detail'){ openDetail(id); }
+});
+document.getElementById('overdueBody').addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]'); if(!b) return;
+  var r=loadRecords().find(function(x){return x.id===b.dataset.id;});
+  if(!r) return;
+  if(b.dataset.act==='remind'){ doAction(r.id,{action:'remind'},function(){
+    toast('已向 '+r.dept+' '+r.owner+'（'+r.phone+'）发送到期提醒'); }); }
+  else if(b.dataset.act==='copynote'){
+    var text=notifyText(r);
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast('通知文案已复制，可粘贴至工作群'); },
+        function(){ toast('复制失败，请在详情中手动复制'); });
+    }else{
+      var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+      toast('通知文案已复制，可粘贴至工作群');
+    }
+  }
+});
+
+/* 导出按钮 */
+document.getElementById('exportOrders').addEventListener('click',function(){
+  var kw=state.kw.trim();
+  var list=loadRecords().filter(function(r){ return (state.st==='all'||effStatus(r)===state.st)&&(!kw||matchKw(r,kw)); })
+    .sort(byCreatedDesc);
+  if(!list.length) return toast('当前筛选条件下无可导出数据');
+  exportXls('条幅报备台账_'+today()+'.xls',EXP_HEAD,recordRows(list));
+  toast('已导出 '+list.length+' 条报备记录');
+});
+document.getElementById('exportOverdue').addEventListener('click',function(){
+  var list=loadRecords().filter(function(r){return effStatus(r)==='overdue';})
+    .sort(function(a,b){return overdueDays(b)-overdueDays(a);});
+  if(!list.length) return toast('当前无超期数据可导出');
+  exportXls('到期未撤条幅清单_'+today()+'.xls',EXP_HEAD,recordRows(list));
+  toast('已导出 '+list.length+' 条超期记录');
+});
+document.getElementById('exportArchive').addEventListener('click',function(){
+  var list=doneList();
+  if(!list.length) return toast('当前条件下无归档数据可导出');
+  exportXls('条幅归档台账_'+today()+'.xls',EXP_HEAD,recordRows(list));
+  toast('已导出 '+list.length+' 条归档记录');
+});
+
+/* 弹窗关闭 */
+document.querySelectorAll('[data-close]').forEach(function(b){
+  b.addEventListener('click',function(){ document.getElementById(b.dataset.close).classList.add('hidden'); });
+});
+document.querySelectorAll('.mask').forEach(function(m){
+  m.addEventListener('click',function(e){ if(e.target===m) m.classList.add('hidden'); });
+});
+document.getElementById('rejectConfirm').addEventListener('click',confirmReject);
+
+/* 重置演示数据（清空服务器记录并恢复初始示例，注册用户保留） */
+document.getElementById('resetBtn').addEventListener('click',function(){
+  if(confirm('将清空服务器中的全部报备数据并恢复初始演示数据，确定？')){
+    apiPost('/api/reset',{}).then(function(d){
+      if(!d.ok) return toast(d.msg||'重置失败');
+      location.reload();
+    }).catch(function(){ toast('网络异常，请稍后重试'); });
+  }
+});
+
+/* 多端同步：每 5 秒轮询服务器，用户新提交报备后此处自动刷新 */
+setInterval(refresh,5000);
+
+/* 初始化 */
+document.getElementById('todayStr').textContent='今天是 '+today();
+document.getElementById('adminName').textContent=(SESSION&&SESSION.name)||'宣传部管理员';
+document.getElementById('logoutBtn').addEventListener('click',function(){
+  if(confirm('确定退出管理员账号？')){
+    localStorage.removeItem(SESSION_KEY);
+    location.replace('login.html');
+  }
+});
+/* 初始化：先拉取服务器数据再渲染 */
+refresh();
+</script>
+</body>
+</html>
