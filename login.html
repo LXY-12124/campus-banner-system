@@ -160,7 +160,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;
  *   注册 / 登录均由 server.py + SQLite（banner.db）处理，
  *   任何设备注册的用户都汇聚到同一数据库，管理员可实时看到其报备。
  *   banner_session_v1 当前登录会话 {role, name, phone, dept}（仅存登录态）
- * 内置管理员：admin / admin123（由服务器校验，页面不展示）
+ * 管理员账号由服务器校验，页面及源码均不展示、不存储管理员凭据
  * ===================================================================== */
 /* 学校真实单位列表：教学学院 / 教研单位 / 学生组织（分组展示） */
 var DEPT_GROUPS = [
@@ -285,12 +285,8 @@ document.getElementById('paneLogin').addEventListener('submit',function(e){
     })
     .catch(function(){
       /* 离线降级：无服务器时校验本机注册的账号，进入离线版页面 */
-      if(role==='admin'){
-        if(acc!=='admin'||pw!=='admin123') return toast('管理员账号或密码错误');
-        saveSession({role:'admin',name:'宣传部管理员',phone:acc});
-        toast('离线模式：管理员登录成功');
-        return setTimeout(function(){ location.href=targetPage('admin'); },600);
-      }
+      /* 管理员凭据仅存于服务端，离线模式下不支持管理员登录（前端不保存凭据） */
+      if(role==='admin') return toast('离线模式暂不支持管理员登录，请通过在线系统访问');
       var u=loadUsers().find(function(x){return x.phone===acc&&x.pwd===pw;});
       if(!u) return toast('账号或密码错误（离线模式仅可登录本机注册账号）');
       saveSession({role:'user',name:u.name,phone:u.phone,dept:u.dept});
