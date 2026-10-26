@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>校园条幅报备系统 · 登录 / 注册</title>
+<style>
+:root{
+  --primary:#2f54eb; --primary-dark:#1d39c4;
+  --text:#1f2329; --muted:#8a9099; --line:#e4e8f2;
+  --danger:#f5222d;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:linear-gradient(160deg,#16235c 0%,#1d39c4 45%,#3450d6 100%);color:var(--text);
+  display:flex;align-items:center;justify-content:center;padding:22px;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(800px 500px at 85% 10%,rgba(255,255,255,.12),transparent 60%),
+             radial-gradient(600px 400px at 8% 90%,rgba(255,255,255,.08),transparent 60%)}
+.auth{position:relative;width:100%;max-width:920px;background:#fff;border-radius:20px;overflow:hidden;
+  display:grid;grid-template-columns:1.05fr 1fr;box-shadow:0 30px 80px rgba(8,18,60,.35)}
+@media (max-width:840px){.auth{grid-template-columns:1fr}.aside{display:none}}
+
+/* 左侧介绍区 */
+.aside{padding:38px 34px;background:linear-gradient(160deg,#101a3d,#1d39c4);color:#e6ecff;display:flex;flex-direction:column}
+.aside .brand{display:flex;align-items:center;gap:12px;font-size:14px;letter-spacing:.5px;color:#cdd8ff}
+.aside .brand svg{width:34px;height:34px;color:#8ea8ff}
+.aside h1{margin-top:34px;font-size:26px;line-height:1.35;color:#fff;font-weight:700;letter-spacing:1px}
+.aside p{margin-top:12px;font-size:13px;line-height:1.9;color:#b8c4ee}
+.aside ul{margin-top:auto;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.aside li{display:flex;align-items:center;gap:9px;font-size:12px;color:#c9d4f5}
+.aside li i{width:6px;height:6px;border-radius:50%;background:#6f8dff;flex:0 0 auto}
+
+/* 右侧表单区 */
+.panel{padding:36px 38px 30px}
+.panel h2{font-size:20px;font-weight:700;letter-spacing:.5px}
+.panel .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.tabs{display:flex;background:#f1f3fa;border-radius:10px;padding:4px;margin:20px 0 18px}
+.tabs button{flex:1;border:none;background:transparent;padding:9px 0;font-size:14px;border-radius:8px;cursor:pointer;color:#6b7486}
+.tabs button.on{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 2px 8px rgba(35,55,140,.10)}
+.pane{display:none;animation:fade .2s ease}
+.pane.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.frow{margin-top:12px}
+.frow label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.frow label i{color:var(--danger);font-style:normal;margin-left:2px}
+.frow input,.frow select{width:100%;padding:11px 13px;border:1px solid #dfe3ee;border-radius:10px;font-size:14px;outline:none;
+  background:#fbfcff;transition:border-color .15s,background .15s;font-family:inherit;color:var(--text)}
+.frow input:focus,.frow select:focus{border-color:var(--primary);background:#fff}
+.frow input.err,.frow select.err{border-color:var(--danger);background:#fff7f7}
+.frow select optgroup{font-weight:600;color:#2f54eb}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:11px;color:#aab0bd;margin-top:5px;line-height:1.6}
+.role-tip{display:flex;gap:8px;margin-top:12px}
+.role-tip button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 6px;cursor:pointer;
+  font-size:13px;color:#4b5568;transition:all .15s}
+.role-tip button.on{border-color:var(--primary);color:var(--primary);background:#f0f5ff;font-weight:600}
+.btn{display:block;width:100%;margin-top:18px;padding:12px 0;border:none;border-radius:999px;cursor:pointer;
+  background:linear-gradient(135deg,#2f54eb,#4d7bff);color:#fff;font-size:15px;font-weight:600;
+  box-shadow:0 8px 20px rgba(47,84,235,.30)}
+.btn:active{opacity:.92}
+.switch{margin-top:14px;text-align:center;font-size:12px;color:var(--muted)}
+.switch a{color:var(--primary);cursor:pointer;text-decoration:none;font-weight:500}
+.demo{margin-top:16px;border-top:1px dashed var(--line);padding-top:12px;font-size:11px;color:#9aa3b5;line-height:1.9}
+.demo b{color:#4b5568;font-weight:600}
+
+/* Toast */
+.toast{position:fixed;top:26px;left:50%;transform:translateX(-50%);background:rgba(23,26,35,.9);color:#fff;
+  padding:10px 20px;border-radius:10px;font-size:13px;z-index:50;max-width:86%;text-align:center;line-height:1.5;
+  animation:fade .18s ease}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="auth">
+  <!-- 左侧：系统介绍 -->
+  <aside class="aside">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg>
+      党委宣传部 · 校园宣传物料管理平台
+    </div>
+    <h1>校园条幅报备系统</h1>
+    <p>为各学院、教研单位、学生组织提供条幅悬挂线上报备、审核监管、到期提醒、撤下登记的全生命周期数字化管理。</p>
+    <ul>
+      <li><i></i>线上报备 · 统一入口，杜绝私自悬挂</li>
+      <li><i></i>到期自动标记 · 督促按时撤下</li>
+      <li><i></i>宣传部后台实时监管 · 台账一键导出</li>
+      <li><i></i>全程留痕 · 数据永久归档可追溯</li>
+    </ul>
+  </aside>
+
+  <!-- 右侧：登录 / 注册 -->
+  <section class="panel">
+    <h2 id="panelTitle">欢迎登录</h2>
+    <div class="sub" id="panelSub">请选择身份并登录系统</div>
+
+    <div class="tabs">
+      <button id="tabLogin" class="on" type="button">登 录</button>
+      <button id="tabRegister" type="button">注 册</button>
+    </div>
+
+    <!-- ===== 登录 ===== -->
+    <form id="paneLogin" class="pane active" novalidate>
+      <div class="role-tip" id="loginRole">
+        <button type="button" data-role="user" class="on">部门用户</button>
+        <button type="button" data-role="admin">管理员</button>
+      </div>
+      <div class="frow">
+        <label id="lAccLabel">账号（手机号）<i>*</i></label>
+        <input id="lPhone" type="text" maxlength="20" placeholder="请输入 11 位手机号">
+      </div>
+      <div class="frow">
+        <label>密码<i>*</i></label>
+        <input id="lPwd" type="password" maxlength="20" placeholder="请输入登录密码">
+      </div>
+      <button class="btn" type="submit">登 录</button>
+      <div class="switch">还没有账号？<a id="goRegister">立即注册</a></div>
+    </form>
+
+    <!-- ===== 注册（仅部门用户） ===== -->
+    <form id="paneRegister" class="pane" novalidate>
+      <div class="grid2">
+        <div class="frow">
+          <label>姓名<i>*</i></label>
+          <input id="rName" type="text" maxlength="12" placeholder="真实姓名">
+        </div>
+        <div class="frow">
+          <label>手机号<i>*</i></label>
+          <input id="rPhone" type="tel" maxlength="11" inputmode="numeric" placeholder="将作为登录账号">
+        </div>
+      </div>
+      <div class="frow">
+        <label>所属单位<i>*</i></label>
+        <select id="rDept"></select>
+      </div>
+      <div class="grid2">
+        <div class="frow">
+          <label>设置密码<i>*</i></label>
+          <input id="rPwd" type="password" maxlength="20" placeholder="6~20 位">
+        </div>
+        <div class="frow">
+          <label>确认密码<i>*</i></label>
+          <input id="rPwd2" type="password" maxlength="20" placeholder="再次输入密码">
+        </div>
+      </div>
+      <div class="hint">注册即代表同意《校园宣传物料报备管理规范》。管理员账号由宣传部统一开通，不开放注册。</div>
+      <button class="btn" type="submit">注册并登录</button>
+      <div class="switch">已有账号？<a id="goLogin">返回登录</a></div>
+    </form>
+  </section>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* =====================================================================
+ * 账号体系（服务器方案）
+ *   注册 / 登录均由 server.py + SQLite（banner.db）处理，
+ *   任何设备注册的用户都汇聚到同一数据库，管理员可实时看到其报备。
+ *   banner_session_v1 当前登录会话 {role, name, phone, dept}（仅存登录态）
+ * 内置管理员：admin / admin123（由服务器校验，页面不展示）
+ * ===================================================================== */
+/* 学校真实单位列表：教学学院 / 教研单位 / 学生组织（分组展示） */
+var DEPT_GROUPS = [
+  {group:'教学学院', items:['城市建设学院','材料与环境学院','智能制造学院','人工智能学院',
+    '低空技术与工程学院','经济学院','管理学院','大健康学院','外国语学院','艺术学院','法学院']},
+  {group:'教研单位', items:['马克思主义学院','明德通识学院','劳动学院','体育部','基础部']},
+  {group:'学生组织', items:['校学生会','校团委','社团联合会','青年志愿者协会']}
+];
+var SESSION_KEY='banner_session_v1', USERS_KEY='banner_users_v1';
+
+function saveSession(s){ localStorage.setItem(SESSION_KEY,JSON.stringify(s)); }
+/* 统一 POST JSON 请求封装 */
+function apiPost(url,data){
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(function(r){ return r.json(); });
+}
+/* 离线降级用的本机账号存取（无服务器时启用，数据仅存当前浏览器） */
+function loadUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY))||[]; }catch(e){ return []; } }
+function saveUsers(u){ localStorage.setItem(USERS_KEY,JSON.stringify(u)); }
+/* 根据当前打开方式返回应进入的页面：file:// 离线打开 → 离线版页面；http → 在线版页面 */
+function targetPage(role){
+  var offline = location.protocol==='file:';
+  if(role==='admin') return offline?'离线版-管理后台.html':'admin.html';
+  return offline?'离线版-用户端H5.html':'index.html';
+}
+
+var role='user', toastTimer=null;
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.add('hidden'); },2200);
+}
+function markErr(el,on){ el.classList.toggle('err',on); return on; }
+
+/* ===== 登录 / 注册页切换 ===== */
+function switchPane(which){
+  var isLogin = which==='login';
+  document.getElementById('tabLogin').classList.toggle('on',isLogin);
+  document.getElementById('tabRegister').classList.toggle('on',!isLogin);
+  document.getElementById('paneLogin').classList.toggle('active',isLogin);
+  document.getElementById('paneRegister').classList.toggle('active',!isLogin);
+  document.getElementById('panelTitle').textContent = isLogin?'欢迎登录':'注册部门账号';
+  document.getElementById('panelSub').textContent  = isLogin?'请选择身份并登录系统':'注册后即可在线提交条幅报备';
+}
+document.getElementById('tabLogin').addEventListener('click',function(){ switchPane('login'); });
+document.getElementById('tabRegister').addEventListener('click',function(){ switchPane('register'); });
+document.getElementById('goRegister').addEventListener('click',function(){ switchPane('register'); });
+document.getElementById('goLogin').addEventListener('click',function(){ switchPane('login'); });
+
+/* 登录身份切换：部门用户（手机号）/ 管理员（账号） */
+document.getElementById('loginRole').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-role]'); if(!b) return;
+  role=b.dataset.role;
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on',x===b); });
+  var isAdmin = role==='admin';
+  document.getElementById('lAccLabel').innerHTML = isAdmin?'管理员账号<i>*</i>':'账号（手机号）<i>*</i>';
+  document.getElementById('lPhone').placeholder = isAdmin ? '请输入管理员账号' : '请输入 11 位手机号';
+});
+
+/* ===== 注册：部门下拉（分组） ===== */
+var deptSel=document.getElementById('rDept');
+deptSel.innerHTML='<option value="">请选择所属单位</option>'+DEPT_GROUPS.map(function(g){
+  return '<optgroup label="'+g.group+'">'+g.items.map(function(d){return '<option>'+d+'</option>';}).join('')+'</optgroup>';
+}).join('');
+
+document.getElementById('paneRegister').addEventListener('submit',function(e){
+  e.preventDefault();
+  var name=document.getElementById('rName'), phone=document.getElementById('rPhone'),
+      dept=document.getElementById('rDept'), pwd=document.getElementById('rPwd'), pwd2=document.getElementById('rPwd2');
+  var bad=false;
+  bad=markErr(name,!name.value.trim())||bad;
+  bad=markErr(phone,!/^1[3-9]\d{9}$/.test(phone.value.trim()))||bad;
+  bad=markErr(dept,!dept.value)||bad;
+  bad=markErr(pwd,pwd.value.length<6)||bad;
+  bad=markErr(pwd2,pwd2.value!==pwd.value||!pwd2.value)||bad;
+  if(bad){
+    return toast(name.classList.contains('err')?'请输入姓名'
+      :phone.classList.contains('err')?'请输入正确的 11 位手机号'
+      :dept.classList.contains('err')?'请选择所属单位'
+      :pwd.classList.contains('err')?'密码至少 6 位'
+      :'两次输入的密码不一致');
+  }
+  /* 优先提交服务器注册：用户数据入库，全设备可见 */
+  apiPost('/api/register',{name:name.value.trim(),phone:phone.value.trim(),dept:dept.value,pwd:pwd.value})
+    .then(function(d){
+      if(!d.ok) return toast(d.msg||'注册失败，请重试');
+      saveSession(d.session);
+      toast('注册成功，正在进入系统…');
+      setTimeout(function(){ location.href='index.html'; },600);
+    })
+    .catch(function(){
+      /* 离线降级：无服务器时写入本机浏览器，进入离线版页面 */
+      var users=loadUsers();
+      if(users.some(function(u){return u.phone===phone.value.trim();})) return toast('该手机号已注册，请直接登录');
+      var u={name:name.value.trim(),phone:phone.value.trim(),dept:dept.value,pwd:pwd.value};
+      users.push(u); saveUsers(users);
+      saveSession({role:'user',name:u.name,phone:u.phone,dept:u.dept});
+      toast('离线模式：注册成功（数据仅存本机），正在进入…');
+      setTimeout(function(){ location.href=targetPage('user'); },600);
+    });
+});
+
+/* ===== 登录 ===== */
+document.getElementById('paneLogin').addEventListener('submit',function(e){
+  e.preventDefault();
+  var phone=document.getElementById('lPhone'), pwd=document.getElementById('lPwd');
+  var acc=phone.value.trim(), pw=pwd.value;
+  var bad=false;
+  bad=markErr(phone,!acc)||bad;
+  bad=markErr(pwd,!pw)||bad;
+  if(bad) return toast('请输入账号和密码');
+
+  if(role!=='admin'&&!/^1[3-9]\d{9}$/.test(acc)) return toast('请输入正确的 11 位手机号');
+  /* 服务器校验账号密码（管理员为内置账号） */
+  apiPost('/api/login',{role:role,account:acc,pwd:pw})
+    .then(function(d){
+      if(!d.ok) return toast(d.msg||'登录失败，请重试');
+      saveSession(d.session);
+      toast(role==='admin'?'登录成功，正在进入管理后台…':'登录成功，正在进入系统…');
+      setTimeout(function(){ location.href=role==='admin'?'admin.html':'index.html'; },600);
+    })
+    .catch(function(){
+      /* 离线降级：无服务器时校验本机注册的账号，进入离线版页面 */
+      if(role==='admin'){
+        if(acc!=='admin'||pw!=='admin123') return toast('管理员账号或密码错误');
+        saveSession({role:'admin',name:'宣传部管理员',phone:acc});
+        toast('离线模式：管理员登录成功');
+        return setTimeout(function(){ location.href=targetPage('admin'); },600);
+      }
+      var u=loadUsers().find(function(x){return x.phone===acc&&x.pwd===pw;});
+      if(!u) return toast('账号或密码错误（离线模式仅可登录本机注册账号）');
+      saveSession({role:'user',name:u.name,phone:u.phone,dept:u.dept});
+      toast('离线模式：登录成功');
+      setTimeout(function(){ location.href=targetPage('user'); },600);
+    });
+});
+
+/* 已登录则直接进入对应页面（file:// 打开时进入离线版页面） */
+(function(){
+  try{
+    var s=JSON.parse(localStorage.getItem(SESSION_KEY));
+    if(!s) return;
+    if(s.role==='admin') location.replace(targetPage('admin'));
+    else if(s.role==='user') location.replace(targetPage('user'));
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
