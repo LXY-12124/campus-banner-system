@@ -1,0 +1,4 @@
+banner.db
+*.log
+__pycache__/
+离线版-*.html
